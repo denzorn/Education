@@ -1,0 +1,63 @@
+from os import system, remove, mkdir
+system("openssl pkcs12 -in 1.p12 -out 1.txt")
+d=open(r"1.txt",'r')
+vp=open(r'vpn.cnf','w+')
+vp.write('''client
+dev tun
+proto udp
+remote 0.0.0.0 1194
+resolv-retry infinite
+nobind
+ca /yealink/config/openvpn/keys/ca.crt
+cert /yealink/config/openvpn/keys/client1.crt
+key /yealink/config/openvpn/keys/client1.key
+verb 3
+mute 20
+comp-lzo
+route-nopull
+route 10.8.0.0 255.255.255.0
+
+
+
+
+''')
+vp.close()
+m = list(d)
+for i in m:
+    if "friendlyName:" in i:
+        dirname=i[18:].replace('\n','')
+        break
+begin='-----BEGIN CERTIFICATE-----\n'
+end='-----END CERTIFICATE-----\n'
+s=m.index(begin)
+e=m.index(end)
+l=open(r"keys\client1.crt",'w+')
+for i in range(s,e+1):
+    l.write(m[i])
+l.close()
+h=m.index(begin,e+1)
+u=m.index(end,e+1)
+l=open(r"keys\ca.crt",'w+')
+for i in range(h,u+1):
+    l.write(m[i])
+l.close()
+h=m.index('-----BEGIN ENCRYPTED PRIVATE KEY-----\n')
+u=m.index('-----END ENCRYPTED PRIVATE KEY-----\n')
+l=open(r"key.txt",'w+')
+for i in range(h,u+1):
+    l.write(m[i])
+l.close()
+d.close()
+system("openssl rsa -in key.txt -out keys\client1.key")
+from tarfile import TarFile
+mkdir(dirname)
+tar=TarFile.open(r"{}/client.tar".format(dirname),'w')
+tar.add(r"keys")
+tar.add(r"vpn.cnf")
+tar.close()
+remove("vpn.cnf")
+remove("keys/ca.crt")
+remove(r"keys/client1.crt")
+remove(r"keys/client1.key")
+remove(r"1.txt")
+remove(r"key.txt")
